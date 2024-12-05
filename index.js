@@ -3,8 +3,10 @@ const bodyParser = require("body-parser");
 const sqlite3 = require("sqlite3").verbose();
 const app = express();
 const cors = require("cors"); // Import CORS
+const { signToken, verifyToken } = require("./jwt");
+const authenticateJWT = require('./authenticateJWT');
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors());
 
 // Middleware
 app.use(bodyParser.json());
@@ -23,6 +25,22 @@ db.serialize(() => {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+});
+
+// Apply authentication to all routes (except login and public routes)
+app.use('/api/forms', authenticateJWT);
+
+// Example login route to issue JWT token
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (username === 'user' && password === 'password') {
+    // Generate a token and send it to the client
+    const token = signToken(1); // Assuming user ID is 1
+    return res.status(200).json({ message: 'Logged in successfully', token });
+  }
+
+  return res.status(401).json({ error: 'Invalid credentials' });
 });
 
 // API route to save a form
@@ -53,6 +71,29 @@ app.post("/api/forms/save", (req, res) => {
             message: "Form saved successfully",
             id: this.lastID,
         });
+    });
+});
+
+// Endpoint to retrieve all forms
+app.get("/api/forms/list", (req, res) => {
+    const query = "SELECT * FROM forms";
+
+    db.all(query, (err, rows) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: "Failed to retrieve forms" });
+        }
+
+        // Format the response
+        const forms = rows.map((row) => ({
+            id: row.id,
+            form_name: row.form_name,
+            form_data: JSON.parse(row.form_data), // Parse the form data from JSON string
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+        }));
+
+        res.status(200).json(forms);
     });
 });
 
@@ -119,29 +160,6 @@ app.put("/api/forms/update/:id", (req, res) => {
         }
 
         res.status(200).json({ message: "Form updated successfully" });
-    });
-});
-
-// Endpoint to retrieve all forms
-app.get("/api/forms/list", (req, res) => {
-    const query = "SELECT * FROM forms";
-
-    db.all(query, (err, rows) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Failed to retrieve forms" });
-        }
-
-        // Format the response
-        const forms = rows.map((row) => ({
-            id: row.id,
-            form_name: row.form_name,
-            form_data: JSON.parse(row.form_data), // Parse the form data from JSON string
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        }));
-
-        res.status(200).json(forms);
     });
 });
 

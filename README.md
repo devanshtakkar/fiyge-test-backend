@@ -48,6 +48,11 @@ This project is a simple backend application built with Node.js, Express, and SQ
 Send a `GET` request to `/api/forms/list` to retrieve all saved forms.
 
 ---
+## Login Credentials
+- **Username**: `user`
+- **Password**: `password`
+
+You will need these credentials to log in and access the application.
 
 ## **Database**
 
